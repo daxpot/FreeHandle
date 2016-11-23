@@ -1,0 +1,201 @@
+<!DOCTYPE HTML>
+<html>
+ <head>
+  <title>canvas手绘</title>
+  <script>
+   window.onload = function () {
+        var imgurl = "image/bird.jpg";
+        var f = new FreeHand(imgurl, "canvas");
+   }
+
+   var FreeHand = function(imgurl, canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.context = this.canvas.getContext("2d");
+        this.image = new Image();
+        this.image.onload = this.init.bind(this);
+        this.image.src = imgurl;
+   }
+
+   FreeHand.prototype = {
+
+        init: function() {
+            var w = this.image.naturalWidth;
+            var h = this.image.naturalHeight;
+
+            this.canvas.width = this.image.naturalWidth;
+            this.canvas.height = this.image.naturalHeight;
+
+            this.context.drawImage(this.image, 0, 0);
+            context = this.context;
+
+            // 获取图像数据
+            var input = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+
+            //生成盛放数据的空ImageData对象
+            var output = this.context.createImageData(this.canvas.width, this.canvas.height);
+
+            // 定义变量
+            var inputData = input.data;
+            var outputData = output.data;
+
+            // 检测边缘
+            for (var y = 1; y < h-1; y += 1) {
+                for (var x = 1; x < w-1; x += 1) {
+                    for (var c = 0; c < 3; c += 1) {
+                        var i = (y*w + x)*4 + c;
+                        outputData[i] = (127 + -inputData[i - w*4 - 4] -   inputData[i - w*4] - inputData[i - w*4 + 4] +
+                            -inputData[i - 4]       + 8*inputData[i]       - inputData[i + 4] +
+                            -inputData[i + w*4 - 4] -   inputData[i + w*4] - inputData[i + w*4 + 4]);
+                    }
+                    outputData[(y*w + x)*4 + 3] = 255; // alpha
+                }
+            }
+
+            var imagePoint = [];
+
+            var dec = 30;
+
+            for(var x=0;x<w;x++) {
+                imagePoint[x] = [];
+                for(var y=0;y<h;y++) {
+                    var i = (y*w+x)*4;
+                    if(x == 0 || y == 0 || x == w-1 || y == h-1 || Math.abs(outputData[i] - 127) <= dec) {
+                        imagePoint[x][y] = false;
+                    }
+                    else {
+                        imagePoint[x][y] = true;
+                    }
+                }
+            }
+
+            this.context.clearRect(0, 0, w, h);
+
+            var lastPoint = {
+                x: 0,
+                y: 0
+            }
+
+            //获取离指定点最近的一个未绘制过的点
+            var getNearestPoint = function(p) {
+
+                if(p == null) return null;
+
+                //以点p为中心，向外扩大搜索范围，每次搜索的是与p点相距add的正方形
+                for (var add = 1; add < w && add < h; add++) {
+                    //
+                    var beginX = (p.x - add) >= 0 ? (p.x - add) : 0;
+                    var endX = (p.x + add) < w ? (p.x + add) : w - 1;
+                    var beginY = (p.y - add) >= 0 ? (p.y - add) : 0;
+                    var endY = (p.y + add) < h ? (p.y + add) : h - 1;
+                    //搜索正方形的上下边
+                    for (var x = beginX; x <= endX; x++) {
+                        if (imagePoint[x][beginY]) {
+                           //标记当前点已经访问过
+                            imagePoint[x][beginY] = false;
+                            return {x: x, y: beginY};
+                        }
+                        if (imagePoint[x][endY]) {
+                            //标记当前点已经访问过
+                            imagePoint[x][endY] = false;
+                            return {x: x, y: endY};
+                        }
+                    }
+                    //搜索正方形的左右边
+                    for (var y = beginY + 1; y <= endY - 1; y++) {
+                        if (imagePoint[beginX][y]) {
+                            //标记当前点已经访问过
+                            imagePoint[beginX][y] = false;
+                            return {x: beginX, y: y};
+                        }
+                        if (imagePoint[endX][y]) {
+                           //标记当前点已经访问过
+                            imagePoint[endX][y] = false;
+                            return {x: endX, y: y};
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            var getNextPoint = function() {
+                lastPoint = getNearestPoint(lastPoint);
+                return lastPoint;
+            }
+
+            var isDrawing = false;
+            var draw = function() {
+
+                var count = 100;
+                var p = null;
+                var lastp = null;
+                while(count-- > 0) {
+                    p  = getNextPoint();
+                    if(p == null) {
+                        return false;
+                    }
+
+                    if(count == 99) {
+                        context.moveTo(p.x, p.y);
+                        lastp = p;
+                    }
+                    else {
+                        if(Math.abs(p.x - lastp.x) + Math.abs(p.y-lastp.y) > 20) 
+                        {
+                            break;
+                        }
+                        context.lineTo(p.x, p.y);
+                    }
+                }
+                context.fill()
+                context.stroke()
+
+                if(p == null) {
+                    isDrawing = false;
+                    return false;
+                }
+                else {
+                    requestAnimationFrame(draw);
+                }
+            }
+
+            // draw.call(this);
+
+            var beginDraw = function() {
+                if(isDrawing) {
+                    return;
+                }
+                isDrawing = true;
+                requestAnimationFrame(draw);
+            };
+            beginDraw();
+            //描画图像
+
+            var can2 = document.getElementById("canvas2");
+            can2.width = w;
+            can2.height = h;
+
+            for(var i = 0;i<outputData.length;i++) {
+                if(Math.abs(outputData[i] - 127) <= dec) {
+                    outputData[i] = 0;
+                }
+            }
+
+            var ctv2 = can2.getContext("2d");
+            ctv2.putImageData(output, 0, 0);
+        }
+   }
+
+  </script>
+ </head>
+ <body>
+     <h2>图片手绘示例</h2>
+      <h3>使用的图像</h3>
+  <p><img src="image/bird.jpg" alt="Edge detection"></p>
+
+  <h3>手绘</h3>
+  <canvas id="canvas"></canvas>
+  <h3>在原来图像上描画使用canvas检测出的图像边缘</h3>
+  <canvas id="canvas2"></canvas>
+ </body>
+</html>
