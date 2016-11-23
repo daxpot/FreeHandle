@@ -53,7 +53,7 @@
 
             var imagePoint = [];
 
-            var dec = 30;
+            var dec = 20;
 
             for(var x=0;x<w;x++) {
                 imagePoint[x] = [];
@@ -123,29 +123,24 @@
                 return lastPoint;
             }
 
+            var getLine = function() {
+                
+            }
+
             var isDrawing = false;
             var draw = function() {
 
                 var count = 100;
                 var p = null;
-                var lastp = null;
+
                 while(count-- > 0) {
                     p  = getNextPoint();
                     if(p == null) {
                         return false;
                     }
 
-                    if(count == 99) {
-                        context.moveTo(p.x, p.y);
-                        lastp = p;
-                    }
-                    else {
-                        if(Math.abs(p.x - lastp.x) + Math.abs(p.y-lastp.y) > 20) 
-                        {
-                            break;
-                        }
-                        context.lineTo(p.x, p.y);
-                    }
+                    context.moveTo(p.x-1, p.y-1);
+                    context.lineTo(p.x, p.y);
                 }
                 context.fill()
                 context.stroke()
