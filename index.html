@@ -8,6 +8,7 @@
         var f = new FreeHand(imgurl, "canvas");
    }
 
+  
    var FreeHand = function(imgurl, canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.context = this.canvas.getContext("2d");
@@ -53,13 +54,13 @@
 
             var imagePoint = [];
 
-            var dec = 20;
+            var dec = 90;
 
             for(var x=0;x<w;x++) {
                 imagePoint[x] = [];
                 for(var y=0;y<h;y++) {
                     var i = (y*w+x)*4;
-                    if(x == 0 || y == 0 || x == w-1 || y == h-1 || Math.abs(outputData[i] - 127) <= dec) {
+                    if(x == 0 || y == 0 || x == w-1 || y == h-1 || outputData[i] <= 255-dec) {
                         imagePoint[x][y] = false;
                     }
                     else {
@@ -123,26 +124,30 @@
                 return lastPoint;
             }
 
-            var getLine = function() {
-                
-            }
-
             var isDrawing = false;
             var draw = function() {
 
                 var count = 100;
                 var p = null;
+                var lp = null
 
                 while(count-- > 0) {
                     p  = getNextPoint();
                     if(p == null) {
                         return false;
                     }
-
-                    context.moveTo(p.x-1, p.y-1);
-                    context.lineTo(p.x, p.y);
+                    if(count == 99) {
+                        context.moveTo(p.x, p.y);
+                    }
+                    else if(Math.max(Math.abs(p.x-lp.x), Math.abs(p.y-lp.y)) >= 2) {
+                        context.moveTo(p.x, p.y);
+                    }
+                    else
+                    {
+                        context.lineTo(p.x, p.y);   
+                    }
+                    lp = p;
                 }
-                context.fill()
                 context.stroke()
 
                 if(p == null) {
@@ -171,7 +176,7 @@
             can2.height = h;
 
             for(var i = 0;i<outputData.length;i++) {
-                if(Math.abs(outputData[i] - 127) <= dec) {
+                if(outputData[i] <= 255-dec) {
                     outputData[i] = 0;
                 }
             }
